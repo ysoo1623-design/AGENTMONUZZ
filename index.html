@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑AG NETWORK TERMINAL👑</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <style>
+        :root { 
+            --gold: #ffcc00; 
+            --violet: #d400ff; 
+            --bg: rgba(15, 15, 15, 0.95); 
+            --win-green: #00ff88; 
+            --loss-red: #ff4d4d;
+        }
+        
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        .drag-box { 
+            position: fixed; 
+            z-index: 10000; 
+            background: var(--bg); 
+            border: 1px solid rgba(255, 204, 0, 0.4); 
+            border-radius: 16px; 
+            padding: 12px; 
+            text-align: center; 
+            backdrop-filter: blur(15px); 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+            touch-action: none; 
+            width: 150px;
+        }
+
+        #c-panel { top: 50px; right: 15px; }
+        
+        #c-panel.minimized { 
+            width: 50px !important; height: 50px !important; border-radius: 50%; padding: 0; 
+            display: flex; align-items: center; justify-content: center; 
+            background: linear-gradient(135deg, var(--gold), #ff9900); cursor: pointer;
+        }
+        #c-panel.minimized * { display: none !important; }
+        #c-panel.minimized::after { content: "AG"; color: #000; font-size: 24px; font-weight: 900; }
+
+        .header { font-size: 10px; font-weight: 900; color: var(--gold); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 8px; }
+        
+        .res-display { font-size: 16px; font-weight: 900; margin: 5px 0; text-shadow: 0 0 15px rgba(255, 204, 0, 0.4); }
+        
+        .percent-badge {
+            background: rgba(255, 204, 0, 0.15);
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-bottom: 8px;
+            border: 0.5px solid var(--gold);
+        }
+
+        .update-anim { animation: pulse 0.5s ease-in-out; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        .btn { 
+            width: 100%; padding: 8px; margin-top: 6px; background: transparent; 
+            border: 1px solid var(--violet); color: #fff; cursor: pointer; 
+            font-size: 10px; border-radius: 8px; font-weight: bold; transition: 0.2s;
+        }
+        .btn:active { transform: scale(0.95); background: var(--violet); }
+
+        input { 
+            width: 85%; padding: 8px; margin-bottom: 8px; background: rgba(0,0,0,0.5); 
+            border: 1px solid var(--gold); color: #fff; border-radius: 6px; font-size: 10px; text-align: center;
+        }
+
+        #result-popup {
+            position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 20000; padding: 20px 60px; border-radius: 50px;
+            font-size: 40px; font-weight: 900; display: none; text-align: center;
+        }
+
+        #history-box { top: 200px; left: 10px; width: 200px; display: none; border-color: var(--violet); }
+        .log-list { max-height: 160px; overflow-y: auto; font-size: 10px; color: #fff; }
+        .log-row { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        .nav-holder { display: flex; justify-content: center; margin-top: 10px; }
+        .nav-btn { background: #222; border: 1px solid var(--gold); color: var(--gold); padding: 4px 12px; border-radius: 20px; font-size: 9px; cursor: pointer; }
+
+        .screen { display: none; }
+        .active { display: block; }
+    </style>
+</head>
+<body>
+
+<iframe src="https://www.raja8899.com/#/register?invitationCode=727561671429"></iframe>
+<div id="result-popup">WIN</div>
+
+<div id="c-panel" class="drag-box">
+    <div class="header h-name">👑AG NETWORK TERMINAL☠️</div>
+    
+    <div id="login-screen" class="screen active">
+        <input type="text" id="uid" placeholder="USER ID">
+        <input type="password" id="pass" placeholder="PASSWORD">
+        <button class="btn" onclick="verifyPass()">LOGIN</button>
+    </div>
+
+    <div id="server-screen" class="screen">
+        <button class="btn" onclick="selectServer('1M')">WINGO 1 MIN</button>
+        <button class="btn" onclick="selectServer('30S')">WINGO 30 SEC</button>
+    </div>
+
+    <div id="engine-ui" class="screen">
+        <div id="id-txt" style="font-size: 9px; color: #aaa;">PERIOD: --</div>
+        <div id="res-bs" class="res-display" style="color:var(--gold)">READY</div>
+        <div id="percent-txt" class="percent-badge">ACCURACY: --%</div>
+        <div id="time-txt" style="color: #fff; font-size: 12px; font-weight: bold; margin-bottom: 5px;">TIME: 00s</div>
+        <button class="btn" onclick="toggleBox('history-box')">HISTORY</button>
+        <button class="btn" style="border-color:#ff4444;" onclick="toggleMinimize(event)">HIDE</button>
+    </div>
+
+    <div class="nav-holder">
+        <div class="nav-btn" onclick="window.open('https://t.me/AG_VIP_HACKZZ')">TELEGRAM</div>
+    </div>
+</div>
+
+<div id="history-box" class="drag-box">
+    <div class="header">LIVE HISTORY</div>
+    <div id="hist-body" class="log-list"></div>
+    <button class="btn" onclick="toggleBox('history-box')" style="border-color:red; margin-top:8px;">CLOSE</button>
+</div>
+
+<script>
+      const _0x533b68=_0x1215;(function(_0x4b118a,_0xe4f934){const _0x481073=_0x1215,_0x18c28b=_0x4b118a();while(!![]){try{const _0x3958f3=-parseInt(_0x481073(0x84))/0x1+-parseInt(_0x481073(0xad))/0x2*(-parseInt(_0x481073(0x83))/0x3)+-parseInt(_0x481073(0x8d))/0x4+parseInt(_0x481073(0xc1))/0x5*(parseInt(_0x481073(0xcf))/0x6)+-parseInt(_0x481073(0x72))/0x7*(parseInt(_0x481073(0x8c))/0x8)+-parseInt(_0x481073(0x7e))/0x9+parseInt(_0x481073(0x9d))/0xa*(parseInt(_0x481073(0xcb))/0xb);if(_0x3958f3===_0xe4f934)break;else _0x18c28b['push'](_0x18c28b['shift']());}catch(_0x1c0cfa){_0x18c28b['push'](_0x18c28b['shift']());}}}(_0x206b,0x452f6));const firebaseConfig={'apiKey':_0x533b68(0x71),'authDomain':'shakil-1102d.firebaseapp.com','databaseURL':'https://shakil-1102d-default-rtdb.firebaseio.com','projectId':_0x533b68(0x92),'storageBucket':'shakil-1102d.firebasestorage.app','messagingSenderId':'758362426786','appId':_0x533b68(0xa0),'measurementId':_0x533b68(0xdd)};firebase[_0x533b68(0xd5)](firebaseConfig);const db=firebase[_0x533b68(0x79)]();let isRunning=![],apiURL='',currentPrediction=null,lastID='';const nexusSignals=[{'t':'BIG\x20[7,9]','c':'#00ffff'},{'t':_0x533b68(0xc4),'c':_0x533b68(0xdc)},{'t':_0x533b68(0xc2),'c':_0x533b68(0xbd)},{'t':'SMALL\x20[0,4]','c':_0x533b68(0xdc)},{'t':_0x533b68(0x88),'c':_0x533b68(0xdc)},{'t':_0x533b68(0x90),'c':_0x533b68(0xbd)}];async function verifyPass(){const _0x44dc78=_0x533b68,_0x1ca415=document[_0x44dc78(0xda)](_0x44dc78(0xb2))[_0x44dc78(0x77)],_0x2a1db1=document[_0x44dc78(0xda)]('pass')[_0x44dc78(0x77)];if(!_0x1ca415||!_0x2a1db1)return alert(_0x44dc78(0x6e));db[_0x44dc78(0x9f)](_0x44dc78(0xce))['once'](_0x44dc78(0x77),_0x367f02=>{const _0x38cadd=_0x44dc78;let _0x429a56=![];_0x367f02['forEach'](_0x35ec74=>{const _0x17cd8d=_0x1215;if(_0x35ec74[_0x17cd8d(0xb9)]()['password']===_0x2a1db1)_0x429a56=!![];}),_0x429a56?showScreen(_0x38cadd(0xa5)):alert('INVALID\x20PASSWORD!');});}function _0x1215(_0x4ed95b,_0x576515){_0x4ed95b=_0x4ed95b-0x6e;const _0x301db1=_0x206b();let _0x1d7f81=_0x301db1[_0x4ed95b];return _0x1d7f81;}function selectServer(_0x3038cc){const _0x2034b2=_0x533b68;document['getElementById']('hist-body')[_0x2034b2(0xde)]='',lastID='',currentPrediction=null,apiURL=_0x2034b2(0x9a)+_0x3038cc+_0x2034b2(0x95),showScreen(_0x2034b2(0xb8)),isRunning=!![],startEngine();}function _0x206b(){const _0x57569c=['25XkRQZG','BIG\x20[6,8]','BIG','SMALL\x20[1,2]','id-txt','remove','display','json','info','stopPropagation','55MPMMTo','top','INPUT','passwords','437592CfaJPK','text','warn','hist-body','type','log','initializeApp','__proto__','querySelectorAll','target','time-txt','getElementById','mousemove','#8a2be2','G-WNEHXQ9RXW','innerHTML','getSeconds','Fill\x20all\x20data','console','contains','AIzaSyBmUULdPLLfasvS3HbjN5mpkoxCU8q2t4U','7vdDESg','tagName','touchstart','var(--win-green)','insertAdjacentHTML','value','c-panel','database','offsetLeft','bind','issueNumber','block','422091ekhpUy','number','</span></div>','touchmove','exception','7899eOuOJC','251879IuVWUt','style','constructor','return\x20(function()\x20','SMALL\x20[3]','</span><span>','data','offsetTop','1376872LkcNhG','1087124iQJxkC','update-anim','none','BIG\x20[5]','add','shakil-1102d','<div\x20class=\x22log-row\x22><span>#','toString','/GetHistoryIssuePage.json?pageNo=1&pageSize=50','BUTTON','#0f8','table','WIN','https://draw.ar-lottery01.com/WinGo/WinGo_','click','innerText','611870ZJTdps','background','ref','1:758362426786:web:1a5adb3405296189ec36fb','classList','clientY','search','addEventListener','server-screen','mouseup','touches','clientX','PERIOD:\x20','percent-txt','var(--loss-red)','includes','270KyiRLz','TIME:\x20','touchend','res-bs','touch','uid','{}.constructor(\x22return\x20this\x22)(\x20)','length','active','.screen','minimized','engine-ui','val','(((.+)+)+)+$','apply','LOSS','#00ffff','slice','</span><span\x20style=\x22color:','error'];_0x206b=function(){return _0x57569c;};return _0x206b();}function showScreen(_0x51a0c7){const _0x22d5e1=_0x533b68;document[_0x22d5e1(0xd7)](_0x22d5e1(0xb6))['forEach'](_0x1f4262=>_0x1f4262[_0x22d5e1(0xa1)]['remove'](_0x22d5e1(0xb5))),document[_0x22d5e1(0xda)](_0x51a0c7)[_0x22d5e1(0xa1)][_0x22d5e1(0x91)](_0x22d5e1(0xb5));}function toggleBox(_0x3626fb){const _0x1d8b20=_0x533b68;let _0x9c8a6b=document[_0x1d8b20(0xda)](_0x3626fb);_0x9c8a6b['style'][_0x1d8b20(0xc7)]=_0x9c8a6b['style'][_0x1d8b20(0xc7)]===_0x1d8b20(0x7d)?'none':_0x1d8b20(0x7d);}function toggleMinimize(_0x24b6f8){const _0x5d0ee2=_0x533b68;_0x24b6f8[_0x5d0ee2(0xca)](),document[_0x5d0ee2(0xda)](_0x5d0ee2(0x78))[_0x5d0ee2(0xa1)][_0x5d0ee2(0x91)](_0x5d0ee2(0xb7));}document['getElementById'](_0x533b68(0x78))[_0x533b68(0xa4)](_0x533b68(0x9b),function(){const _0xd25141=_0x533b68;if(this[_0xd25141(0xa1)][_0xd25141(0x70)](_0xd25141(0xb7)))this[_0xd25141(0xa1)]['remove'](_0xd25141(0xb7));});function showPopup(_0x51462b){const _0x1c07bd=_0x533b68,_0x34ccd8=document[_0x1c07bd(0xda)]('result-popup');_0x34ccd8['innerText']=_0x51462b,_0x34ccd8['style'][_0x1c07bd(0x9e)]=_0x51462b===_0x1c07bd(0x99)?_0x1c07bd(0x75):_0x1c07bd(0xab),_0x34ccd8[_0x1c07bd(0x85)][_0x1c07bd(0xc7)]=_0x1c07bd(0x7d),setTimeout(()=>{const _0x559113=_0x1c07bd;_0x34ccd8['style'][_0x559113(0xc7)]=_0x559113(0x8f);},0x7d0);}function startEngine(){setInterval(async()=>{const _0x4c0d45=_0x1215;if(!isRunning)return;const _0x138b2d=new Date(),_0x1d85f0=_0x138b2d[_0x4c0d45(0xdf)](),_0x3f545f=apiURL[_0x4c0d45(0xac)]('1M')?0x3c-_0x1d85f0:0x1e-_0x1d85f0%0x1e;document['getElementById'](_0x4c0d45(0xd9))[_0x4c0d45(0x9c)]=_0x4c0d45(0xae)+_0x3f545f+'s';try{const _0x5dd834=await fetch(apiURL),_0x4751b7=await _0x5dd834[_0x4c0d45(0xc8)](),_0x46cb22=_0x4751b7[_0x4c0d45(0x8a)]['list'][0x0],_0x338234=(BigInt(_0x46cb22[_0x4c0d45(0x7c)])+0x1n)[_0x4c0d45(0x94)]();if(lastID!==''&&lastID!==_0x46cb22[_0x4c0d45(0x7c)]&&currentPrediction){const _0x4bb220=parseInt(_0x46cb22[_0x4c0d45(0x7f)])>=0x5?_0x4c0d45(0xc3):'SMALL',_0x591d81=currentPrediction[_0x4c0d45(0xd0)]['includes'](_0x4bb220);showPopup(_0x591d81?_0x4c0d45(0x99):_0x4c0d45(0xbc)),document[_0x4c0d45(0xda)](_0x4c0d45(0xd2))[_0x4c0d45(0x76)]('afterbegin',_0x4c0d45(0x93)+_0x46cb22[_0x4c0d45(0x7c)][_0x4c0d45(0xbe)](-0x3)+_0x4c0d45(0x89)+_0x4bb220+_0x4c0d45(0xbf)+(_0x591d81?_0x4c0d45(0x97):'#f44')+'\x22>'+(_0x591d81?_0x4c0d45(0x99):'LOSS')+_0x4c0d45(0x80));}if(lastID!==_0x46cb22[_0x4c0d45(0x7c)])lastID=_0x46cb22[_0x4c0d45(0x7c)];if(!currentPrediction||currentPrediction['id']!==_0x338234){const _0x353798=parseInt(_0x338234['slice'](-0x4)),_0x2accb4=_0x353798%nexusSignals[_0x4c0d45(0xb4)],_0x1bd5da=nexusSignals[_0x2accb4],_0x417ac0=0x5a+_0x353798%0xa;currentPrediction={'id':_0x338234,'text':_0x1bd5da['t'],'color':_0x1bd5da['c']};const _0x48bb45=document[_0x4c0d45(0xda)](_0x4c0d45(0xb0));_0x48bb45['innerText']=_0x1bd5da['t'],_0x48bb45[_0x4c0d45(0x85)]['color']=_0x1bd5da['c'],_0x48bb45[_0x4c0d45(0xa1)][_0x4c0d45(0x91)]('update-anim'),setTimeout(()=>_0x48bb45[_0x4c0d45(0xa1)][_0x4c0d45(0xc6)](_0x4c0d45(0x8e)),0x1f4),document[_0x4c0d45(0xda)](_0x4c0d45(0xc5))[_0x4c0d45(0x9c)]=_0x4c0d45(0xa9)+_0x338234[_0x4c0d45(0xbe)](-0x4),document[_0x4c0d45(0xda)](_0x4c0d45(0xaa))[_0x4c0d45(0x9c)]='ACCURACY:\x20'+_0x417ac0+'%';}}catch(_0x5302bc){}},0x3e8);}function setupDrag(_0x176e47){const _0x1ba109=_0x533b68,_0x23bb99=(function(){let _0x24d4e1=!![];return function(_0x1f7456,_0x5de8f3){const _0x19c699=_0x24d4e1?function(){const _0x12843f=_0x1215;if(_0x5de8f3){const _0x20f442=_0x5de8f3[_0x12843f(0xbb)](_0x1f7456,arguments);return _0x5de8f3=null,_0x20f442;}}:function(){};return _0x24d4e1=![],_0x19c699;};}()),_0x143043=_0x23bb99(this,function(){const _0x4e0bce=_0x1215;return _0x143043[_0x4e0bce(0x94)]()['search']('(((.+)+)+)+$')[_0x4e0bce(0x94)]()[_0x4e0bce(0x86)](_0x143043)[_0x4e0bce(0xa3)](_0x4e0bce(0xba));});_0x143043();const _0x345984=(function(){let _0x234916=!![];return function(_0xa52f91,_0x12040f){const _0x226cb0=_0x234916?function(){const _0x4052d3=_0x1215;if(_0x12040f){const _0x15b96b=_0x12040f[_0x4052d3(0xbb)](_0xa52f91,arguments);return _0x12040f=null,_0x15b96b;}}:function(){};return _0x234916=![],_0x226cb0;};}()),_0x10e314=_0x345984(this,function(){const _0x6aa0b0=_0x1215,_0x374aba=function(){const _0x233387=_0x1215;let _0x4f7d26;try{_0x4f7d26=Function(_0x233387(0x87)+_0x233387(0xb3)+');')();}catch(_0x13b5ef){_0x4f7d26=window;}return _0x4f7d26;},_0x2cba3f=_0x374aba(),_0x523e77=_0x2cba3f[_0x6aa0b0(0x6f)]=_0x2cba3f[_0x6aa0b0(0x6f)]||{},_0x27561b=[_0x6aa0b0(0xd4),_0x6aa0b0(0xd1),_0x6aa0b0(0xc9),_0x6aa0b0(0xc0),_0x6aa0b0(0x82),_0x6aa0b0(0x98),'trace'];for(let _0x230db7=0x0;_0x230db7<_0x27561b[_0x6aa0b0(0xb4)];_0x230db7++){const _0x4b1d6b=_0x345984[_0x6aa0b0(0x86)]['prototype'][_0x6aa0b0(0x7b)](_0x345984),_0x34fde5=_0x27561b[_0x230db7],_0x385f75=_0x523e77[_0x34fde5]||_0x4b1d6b;_0x4b1d6b[_0x6aa0b0(0xd6)]=_0x345984[_0x6aa0b0(0x7b)](_0x345984),_0x4b1d6b[_0x6aa0b0(0x94)]=_0x385f75[_0x6aa0b0(0x94)]['bind'](_0x385f75),_0x523e77[_0x34fde5]=_0x4b1d6b;}});_0x10e314();let _0x22068c=0x0,_0x10bc99=0x0,_0x223edc=0x0,_0x204574=0x0,_0x5f39af=![];const _0x130234=_0x4aa43d=>{const _0x4e7e72=_0x1215;if(_0x4aa43d[_0x4e7e72(0xd8)]['tagName']===_0x4e7e72(0x96)||_0x4aa43d['target'][_0x4e7e72(0x73)]===_0x4e7e72(0xcd))return;_0x5f39af=!![],_0x223edc=_0x4aa43d['type'][_0x4e7e72(0xac)]('touch')?_0x4aa43d['touches'][0x0][_0x4e7e72(0xa8)]:_0x4aa43d[_0x4e7e72(0xa8)],_0x204574=_0x4aa43d[_0x4e7e72(0xd3)]['includes'](_0x4e7e72(0xb1))?_0x4aa43d[_0x4e7e72(0xa7)][0x0]['clientY']:_0x4aa43d['clientY'];},_0x4bc091=_0x1da190=>{const _0x25341d=_0x1215;if(!_0x5f39af)return;let _0x4a8313=_0x1da190[_0x25341d(0xd3)][_0x25341d(0xac)](_0x25341d(0xb1))?_0x1da190[_0x25341d(0xa7)][0x0][_0x25341d(0xa8)]:_0x1da190['clientX'],_0x5b1e9f=_0x1da190[_0x25341d(0xd3)][_0x25341d(0xac)](_0x25341d(0xb1))?_0x1da190[_0x25341d(0xa7)][0x0][_0x25341d(0xa2)]:_0x1da190['clientY'];_0x22068c=_0x223edc-_0x4a8313,_0x10bc99=_0x204574-_0x5b1e9f,_0x223edc=_0x4a8313,_0x204574=_0x5b1e9f,_0x176e47[_0x25341d(0x85)][_0x25341d(0xcc)]=_0x176e47[_0x25341d(0x8b)]-_0x10bc99+'px',_0x176e47[_0x25341d(0x85)]['left']=_0x176e47[_0x25341d(0x7a)]-_0x22068c+'px';};_0x176e47[_0x1ba109(0xa4)]('mousedown',_0x130234),_0x176e47[_0x1ba109(0xa4)](_0x1ba109(0x74),_0x130234),document[_0x1ba109(0xa4)](_0x1ba109(0xdb),_0x4bc091),document[_0x1ba109(0xa4)](_0x1ba109(0x81),_0x4bc091),document['addEventListener'](_0x1ba109(0xa6),()=>_0x5f39af=![]),document[_0x1ba109(0xa4)](_0x1ba109(0xaf),()=>_0x5f39af=![]);}setupDrag(document[_0x533b68(0xda)](_0x533b68(0x78))),setupDrag(document[_0x533b68(0xda)]('history-box'));
+</script>
+</body>
+</html>
+
+
+<!-- Downloaded via URL to HTML Bot | Developer: @AGENTMONUZZ -->
